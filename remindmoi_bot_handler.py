@@ -2,18 +2,20 @@ import json
 import requests
 
 from typing import Any, Dict
-
-from bot_helpers import (
+from bot_server.constants import (
     ADD_ENDPOINT,
     REMOVE_ENDPOINT,
     LIST_ENDPOINT,
     REPEAT_ENDPOINT,
     MULTI_REMIND_ENDPOINT,
+)
+from bot_server.bot_helpers import (
     is_add_command,
     is_remove_command,
     is_list_command,
     is_repeat_reminder_command,
     is_multi_remind_command,
+    is_remindme_command,
     parse_add_command_content,
     parse_remove_command_content,
     generate_reminders_list,
@@ -69,6 +71,13 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
         return USAGE
 
     try:
+        if is_remindme_command(message["content"]):
+            import ipdb; ipdb.set_trace()
+            reminder_object = parse_add_command_content(message)
+            response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
+            response = response.json()
+            assert response["success"]
+            return f"Reminder stored. Your reminder id is: {response['reminder_id']}"
         if is_add_command(message["content"]):
             reminder_object = parse_add_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
