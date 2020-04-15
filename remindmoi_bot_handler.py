@@ -21,8 +21,7 @@ from remindmoi_django.bot_server.bot_helpers import (
     generate_reminders_list,
     parse_repeat_command_content,
     parse_multi_remind_command_content,
-    parse_remindme_command_content,
-)
+    parse_remindme_command_content)
 
 
 USAGE = """
@@ -110,7 +109,14 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             )
             response = response.json()
             assert response["success"]
-            return f"Reminder will be sent to the specified recepients."  # Todo: add list of recepients
+            emails = ', '.join(
+                [
+                    f"@**{email}**"
+                    for email
+                    in response["user_emails_to_remind"]
+                ]
+            )
+            return f"Reminder will be sent to {emails}. Your reminder id is: {response['reminder_id']}."
         return "Invalid input. Please check help."
     except requests.exceptions.ConnectionError:
         return "Server not running, call Karim"
