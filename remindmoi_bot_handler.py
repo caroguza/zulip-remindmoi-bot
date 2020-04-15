@@ -2,23 +2,26 @@ import json
 import requests
 
 from typing import Any, Dict
-
-from bot_helpers import (
+from remindmoi_django.bot_server.constants import (
     ADD_ENDPOINT,
     REMOVE_ENDPOINT,
     LIST_ENDPOINT,
     REPEAT_ENDPOINT,
     MULTI_REMIND_ENDPOINT,
+)
+from remindmoi_django.bot_server.bot_helpers import (
     is_add_command,
     is_remove_command,
     is_list_command,
     is_repeat_reminder_command,
     is_multi_remind_command,
+    is_remindme_command,
     parse_add_command_content,
     parse_remove_command_content,
     generate_reminders_list,
     parse_repeat_command_content,
     parse_multi_remind_command_content,
+    parse_remindme_command_content,
 )
 
 
@@ -65,38 +68,43 @@ class RemindMoiHandler(object):
 
 
 def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
-    if message["content"].startswith(("help", "?", "halp")):
+    message_content = message["content"]
+    if message_content.startswith(("help", "?", "halp")):
         return USAGE
 
     try:
-        if is_add_command(message["content"]):
+        if is_remindme_command(message_content):
+            reminder_object = parse_remindme_command_content(message)
+            response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
+            response = response.json()
+            assert response["success"]
+            return f"Reminder stored. Your reminder id is: {response['reminder_id']}. url: {reminder_object['title']}"
+        if is_add_command(message_content):
             reminder_object = parse_add_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
             response = response.json()
             assert response["success"]
             return f"Reminder stored. Your reminder id is: {response['reminder_id']}"
-        if is_remove_command(message["content"]):
-            reminder_id = parse_remove_command_content(message["content"])
+        if is_remove_command(message_content):
+            reminder_id = parse_remove_command_content(message_content)
             response = requests.post(url=REMOVE_ENDPOINT, json=reminder_id)
             response = response.json()
             assert response["success"]
             return "Reminder deleted."
-        if is_list_command(message["content"]):
+        if is_list_command(message_content):
             zulip_user_email = {"zulip_user_email": message["sender_email"]}
             response = requests.post(url=LIST_ENDPOINT, json=zulip_user_email)
             response = response.json()
             assert response["success"]
             return generate_reminders_list(response)
-        if is_repeat_reminder_command(message["content"]):
-            repeat_request = parse_repeat_command_content(message["content"])
+        if is_repeat_reminder_command(message_content):
+            repeat_request = parse_repeat_command_content(message_content)
             response = requests.post(url=REPEAT_ENDPOINT, json=repeat_request)
             response = response.json()
             assert response["success"]
             return f"Reminder will be repeated every {repeat_request['repeat_value']} {repeat_request['repeat_unit']}."
-        if is_multi_remind_command(message["content"]):
-            multi_remind_request = parse_multi_remind_command_content(
-                message["content"]
-            )
+        if is_multi_remind_command(message_content):
+            multi_remind_request = parse_multi_remind_command_content(message_content)
             response = requests.post(
                 url=MULTI_REMIND_ENDPOINT, json=multi_remind_request
             )

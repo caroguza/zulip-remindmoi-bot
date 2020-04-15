@@ -1,17 +1,50 @@
+import re
+import urllib.parse
 from typing import Any, Dict
 from datetime import timedelta, datetime
 
+from .constants import (
+    UNITS,
+    SINGULAR_UNITS,
+    BASE_TEMPLATE_URL,
+    STREAM_TYPES,
+    PUBLIC_STREAM_TYPE,
+)
 
-UNITS = ["minutes", "hours", "days", "weeks"]
-SINGULAR_UNITS = ["minute", "hour", "day", "week"]
-REPEAT_UNITS = ["weekly", "daily", "monthly"] + ["minutely"]  # Remove after testing
 
-ENDPOINT_URL = "http://localhost:8789"
-ADD_ENDPOINT = ENDPOINT_URL + "/add_reminder"
-REMOVE_ENDPOINT = ENDPOINT_URL + "/remove_reminder"
-LIST_ENDPOINT = ENDPOINT_URL + "/list_reminders"
-REPEAT_ENDPOINT = ENDPOINT_URL + "/repeat_reminder"
-MULTI_REMIND_ENDPOINT = ENDPOINT_URL + "/multi_remind"
+def get_url_params(message):
+    display_recipient = message.get("display_recipient")
+    stream_name = display_recipient if isinstance(display_recipient, str) else None
+    recipients = []
+    if isinstance(display_recipient, list):
+        for recipient in reversed(display_recipient):
+            recipients.append(recipient.get("email"))
+    return {
+        "message_type": message.get("type"),
+        "stream_id": message.get("stream_id"),
+        "stream_name": stream_name,
+        "subject": message.get("subject"),
+        "recipients": recipients,
+        "message_id": message.get("id")
+    }
+
+
+def create_conversation_url(
+    message_type, stream_id, stream_name, subject, recipients, message_id
+):
+    current_url = f"{STREAM_TYPES[message_type]}"
+    if message_type == PUBLIC_STREAM_TYPE:
+        assert subject
+        stream_full_id = f"{stream_id}-{stream_name}"
+        current_url = f"{current_url}/{stream_full_id}/subject/{subject}"
+    else:
+        assert not subject
+        involved = ",".join(recipients)
+        current_url = f"{current_url}/{involved}"
+    current_url = f"{current_url}/near/{message_id}"
+    safe_url = urllib.parse.quote(current_url)
+    url = f"{BASE_TEMPLATE_URL}/{safe_url}"
+    return url
 
 
 def is_add_command(content: str, units=UNITS + SINGULAR_UNITS) -> bool:
@@ -71,6 +104,39 @@ def is_multi_remind_command(content: str) -> bool:
         return False
 
 
+def is_remindme_command(content: str) -> bool:
+    try:
+        result = re.match(r"me\s+\d+\s+\w+(\s+--multi\s+(@\w+)+)?", content)
+        return result is not None
+    except (AssertionError, IndexError, ValueError):
+        return False
+
+
+def has_multi(content: str) -> bool:
+    return "--multi" in content
+
+
+def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a message object with reminder details,
+    construct a JSON/dict.
+    """
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+    content = message["content"].split(
+        " ", maxsplit=3
+    )
+    return {
+        "zulip_user_email": message["sender_email"],
+        "title": url,
+        "created": message["timestamp"],
+        "deadline": compute_deadline_timestamp(
+            message["timestamp"], content[1], content[2]
+        ),
+        "active": True,
+    }
+
+
 def parse_add_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     """
     Given a message object with reminder details,
@@ -110,7 +176,7 @@ def parse_multi_remind_command_content(content: str) -> Dict[str, Any]:
     {'reminder_id': 23, 'users_to_remind': ['Jose', Max]}
     """
     command = content.split(" ", maxsplit=2)
-    users_to_remind = command[2].replace("*", "").replace("@", "").split(" ")
+    users_to_remind = command[2].replace("*", "").replace("@", " ").strip().split(" ",)
     return {"reminder_id": command[1], "users_to_remind": users_to_remind}
 
 
