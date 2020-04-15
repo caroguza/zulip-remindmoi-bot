@@ -121,7 +121,7 @@ def generate_reminders_list(response: Dict[str, Any]) -> str:
         return "No reminders avaliable."
     for reminder in reminders_list:
         bot_response += f"""
-        \nReminder id {reminder['reminder_id']}, titled {reminder['title']}, is scheduled on {datetime.fromtimestamp(reminder['deadline']).strftime('%Y-%m-%d %H:%M')}
+        \nReminder id {reminder['reminder_id']}, titled {reminder['title']}, is scheduled on {reminder['deadline']}
         """
     return bot_response
 

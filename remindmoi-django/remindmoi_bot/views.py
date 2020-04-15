@@ -108,12 +108,14 @@ def list_reminders(request):
     user_reminders = Reminder.objects.filter(
         zulip_user_email__icontains=zulip_user_email
     )
+    new_tzinfo = gettz()
     # Return title and deadline (in unix timestamp) of reminders
     for reminder in user_reminders.values():
+        #import pdb; pdb.set_trace()
         response_reminders.append(
             {
                 "title": reminder["title"],
-                "deadline": reminder["deadline"].timestamp(),
+                "deadline": reminder["deadline"].replace(tzinfo=new_tzinfo).isoformat(),
                 "reminder_id": reminder["reminder_id"],
             }
         )
