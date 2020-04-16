@@ -21,7 +21,8 @@ from remindmoi_django.bot_server.bot_helpers import (
     generate_reminders_list,
     parse_repeat_command_content,
     parse_multi_remind_command_content,
-    parse_remindme_command_content)
+    parse_remindme_command_content,
+)
 
 
 USAGE = """

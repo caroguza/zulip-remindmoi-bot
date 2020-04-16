@@ -1,6 +1,5 @@
 import random
 import urllib.parse
-from copy import copy
 
 from django.test.testcases import TestCase
 from .test_utils import PRIVATE_MESSAGE, PUBLIC_MESSAGE

@@ -99,10 +99,6 @@ def is_multi_remind_command(content: str) -> bool:
         result = re.match(r"multi\s+\d+(((@\w+)(\s)?)+)?", content)
 
         return result is not None
-        # command = content.split(" ", maxsplit=2)
-        # assert command[0] == "multiremind"
-        # assert type(int(command[1])) == int
-        # return True
     except (AssertionError, IndexError, ValueError):
         return False
 
