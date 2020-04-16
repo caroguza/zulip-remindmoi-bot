@@ -22,6 +22,8 @@ from remindmoi_django.bot_server.bot_helpers import (
     parse_repeat_command_content,
     parse_multi_remind_command_content,
     parse_remindme_command_content,
+    is_iso_time_command,
+    parse_add_is_time_command_content
 )
 
 
@@ -73,6 +75,12 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
         return USAGE
 
     try:
+        if is_iso_time_command(message):
+            reminder_object = parse_add_is_time_command_content(message)
+            response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
+            response = response.json()
+            assert response["success"]
+            return f"Reminder stored. Your reminder id is: {response['reminder_id']}. title: {reminder_object['title']}"
         if is_remindme_command(message_content):
             reminder_object = parse_remindme_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
