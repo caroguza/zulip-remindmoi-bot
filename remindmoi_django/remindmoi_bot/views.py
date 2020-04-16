@@ -24,10 +24,11 @@ from remindmoi_bot.zulip_utils import (
 def add_reminder(request):
     # TODO: make it safer. Add CSRF validation. Sanitize/validate post data
     reminder_obj = json.loads(request.body)  # Create and save remninder object
-    zulip_emails = reminder_obj["zulip_user_emails"]
-    if reminder_obj["is_multi"]:
-        zulip_emails = get_user_emails(reminder_obj["zulip_usernames"])
-        zulip_emails = ",".join([email for email in zulip_emails]) + f",{reminder_obj['zulip_user_emails']}"
+    zulip_emails = reminder_obj.get("zulip_user_emails")
+    if reminder_obj.get("is_multi"):
+        zulip_usernames = reminder_obj.get("zulip_usernames")
+        zulip_emails = get_user_emails(zulip_usernames) + [zulip_emails]
+        zulip_emails = ",".join([email for email in zulip_emails])
     reminder = Reminder.objects.create(
         zulip_user_email=zulip_emails,
         title=reminder_obj["title"],
