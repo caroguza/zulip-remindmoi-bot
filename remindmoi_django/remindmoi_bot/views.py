@@ -146,7 +146,7 @@ def repeat_reminder(request):
     repeat_value = repeat_request["repeat_value"]
     reminder = Reminder.objects.get(reminder_id=reminder_id)
     job_id = str(reminder.reminder_id) + reminder.title
- 
+
     scheduler.add_job(
         send_private_zulip_reminder,
         "interval",

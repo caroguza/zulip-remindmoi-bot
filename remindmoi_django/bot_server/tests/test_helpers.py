@@ -50,7 +50,9 @@ class HelperTestCase(TestCase):
             "stream_id": None,
             "stream_name": None,
             "subject": PRIVATE_MESSAGE.get("subject"),
-            "recipients": [pm.get("email") for pm in reversed(PRIVATE_MESSAGE["display_recipient"])],
+            "recipients": [
+                pm.get("email") for pm in reversed(PRIVATE_MESSAGE["display_recipient"])
+            ],
             "message_id": PRIVATE_MESSAGE.get("id"),
         }
 
@@ -72,17 +74,26 @@ class HelperTestCase(TestCase):
 
     def test_create_conversation_private(self):
         expected_base_url = f"{BASE_TEMPLATE_URL}/pm-with"
-        safe_emails = urllib.parse.quote(",".join(
-            [rcp.get("email") for rcp in reversed(PRIVATE_MESSAGE["display_recipient"])]
-        ))
-        expected_url = f"{expected_base_url}/{safe_emails}/near/{PRIVATE_MESSAGE.get('id')}"
+        safe_emails = urllib.parse.quote(
+            ",".join(
+                [
+                    rcp.get("email")
+                    for rcp in reversed(PRIVATE_MESSAGE["display_recipient"])
+                ]
+            )
+        )
+        expected_url = (
+            f"{expected_base_url}/{safe_emails}/near/{PRIVATE_MESSAGE.get('id')}"
+        )
         params = get_url_params(PRIVATE_MESSAGE)
         result_url = create_conversation_url(**params)
         self.assertEqual(expected_url, result_url)
 
     def test_create_conversation_public(self):
         expected_base_url = f"{BASE_TEMPLATE_URL}/stream"
-        expected_unsafe_url = f"{PUBLIC_MESSAGE['stream_id']}-{PUBLIC_MESSAGE['display_recipient']}"
+        expected_unsafe_url = (
+            f"{PUBLIC_MESSAGE['stream_id']}-{PUBLIC_MESSAGE['display_recipient']}"
+        )
         expected_unsafe_url = f"{expected_unsafe_url}/subject/{PUBLIC_MESSAGE['subject']}/near/{PUBLIC_MESSAGE['id']}"
         expected_safe_url = urllib.parse.quote(expected_unsafe_url)
         expected_url = f"{expected_base_url}/{expected_safe_url}"
@@ -100,7 +111,7 @@ class HelperTestCase(TestCase):
         users = set()
         for index in range(users_amount):
             users.add(self.users[index])
-        
+
         current_time = datetime.datetime(2019, 12, 31, 0, 0).timestamp()
         command = f"me at {random.randint(0, 12)}:{random.randint(0, 5)}{random.randint(0, 9)} pm  --multi {''.join(users)}"
         self.assertTrue(is_iso_time_command(command, current_time))

@@ -127,7 +127,9 @@ def is_iso_time_command(content: str, timestamp: int) -> bool:
             current_time = datetime.fromtimestamp(timestamp).time()
             hour = int(result.group(1))
             period = result.group(4).lower()
-            reminder_hour =  hour if period == "am" or (hour == 12 and period == "pm") else 12 + hour
+            reminder_hour = (
+                hour if period == "am" or (hour == 12 and period == "pm") else 12 + hour
+            )
             minutes = int(result.group(3)) if result.group(3) is not None else 0
             reminder_time = current_time.replace(hour=reminder_hour, minute=minutes)
 

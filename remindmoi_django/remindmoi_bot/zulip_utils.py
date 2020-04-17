@@ -48,6 +48,7 @@ def get_user_emails(usernames: List[str]) -> List[str]:
     ]
     return user_emails
 
+
 def convert_date_to_iso(timestamp):
     new_tzinfo = gettz()
     return timestamp.replace(tzinfo=new_tzinfo).isoformat()
