@@ -96,10 +96,9 @@ def is_repeat_reminder_command(content: str, units=UNITS + SINGULAR_UNITS) -> bo
 
 def is_multi_remind_command(content: str) -> bool:
     try:
-        command = content.split(" ", maxsplit=2)
-        assert command[0] == "multiremind"
-        assert type(int(command[1])) == int
-        return True
+        result = re.match(r"multi\s+\d+(((@\w+)(\s)?)+)?", content)
+
+        return result is not None
     except (AssertionError, IndexError, ValueError):
         return False
 
@@ -124,15 +123,21 @@ def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     url_params = get_url_params(message)
     url = create_conversation_url(**url_params)
     content = message["content"].split(
-        " ", maxsplit=3
+        " ", maxsplit=4
     )
+    zulip_usernames = []
+    is_multi = has_multi(message["content"])
+    if is_multi:
+        zulip_usernames = content[4].replace("*", "").replace("@", " ").strip().split(" ",)
     return {
         "zulip_user_email": message["sender_email"],
+        "zulip_usernames": zulip_usernames,
         "title": url,
         "created": message["timestamp"],
         "deadline": compute_deadline_timestamp(
             message["timestamp"], content[1], content[2]
         ),
+        "is_multi": is_multi,
         "active": True,
     }
 
