@@ -1,6 +1,9 @@
 import json
 import requests
 
+from datetime import datetime
+from dateutil.tz import gettz
+
 from typing import Any, Dict
 from remindmoi_django.bot_server.constants import (
     ADD_ENDPOINT,
@@ -23,9 +26,11 @@ from remindmoi_django.bot_server.bot_helpers import (
     parse_multi_remind_command_content,
     parse_remindme_command_content,
     is_iso_time_command,
-    parse_add_is_time_command_content
+    parse_add_is_time_command_content,
+    is_iso_date_command,
+    parse_add_date_command_content,
 )
-
+#from remindmoi_django.remindmoi_bot.zulip_utils import (convert_date_to_iso)
 
 USAGE = """
 A bot that schedules reminders for users.
@@ -75,6 +80,15 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
         return USAGE
 
     try:
+        if is_iso_date_command(message):
+            reminder_object = parse_add_date_command_content(message)
+            response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
+            response = response.json()
+            assert response["success"]
+            new_tzinfo = gettz()
+            deadline = datetime.utcfromtimestamp(reminder_object['deadline']).replace(tzinfo=new_tzinfo).isoformat()
+            message = f"Reminder stored. title: {reminder_object['title']}. Date:{deadline}  Your reminder id is: {response['reminder_id']}. " 
+            return message
         if is_iso_time_command(message):
             reminder_object = parse_add_is_time_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)

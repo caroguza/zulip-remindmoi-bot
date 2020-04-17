@@ -115,6 +115,36 @@ def is_remindme_command(content: str) -> bool:
 def has_multi(content: str) -> bool:
     return "--multi" in content
 
+def is_iso_time_command(message: str) -> bool:
+    try:
+        result = re.match(r"me at\s+\b([0-9]|1[0-2])\b(:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)?\s+(am|pm)*", message["content"], flags=re.IGNORECASE)
+        
+        if result is not None:
+            current_time = datetime.fromtimestamp(message["timestamp"]).time()
+            hour = int(result.group(1))
+            period = result.group(4).lower()
+            reminder_hour = hour if 'am' == period else 12 + hour
+            minutes = int(result.group(3)) if result.group(3) is not None else 0
+            reminder_time = current_time.replace(hour=reminder_hour, minute=minutes)
+            
+            return reminder_time > current_time
+        return False
+    except (AssertionError, IndexError, ValueError):
+        return False
+
+
+def is_iso_date_command(message: str) -> bool:
+    try:
+        result = re.match(r"me\s+at\s+\b(\b(20[2-8][0-9]|209[0-9]|2[1-9][0-9]{2}|[3-9][0-9]{3})\b-\b(0+[1-9]|1[0-2])\b-\b(0+[1-9]|[12][0-9]|3[01])\b)\b\s+\b(\b(0+[0-9]|1[0-9]|2[0-3])\b:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)(\s+--multi\s+(@\w+)+)?", message["content"])
+        if result is not None:
+            remainder_datetime = f'{result.group(1)} {result.group(5)}'
+            new_datetime = datetime.strptime(remainder_datetime, '%Y-%m-%d %H:%M')
+            current_datetime = datetime.fromtimestamp(message["timestamp"])
+            return new_datetime > current_datetime
+        return False
+    except (AssertionError, IndexError, ValueError):
+        return False
+
 
 def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -180,6 +210,54 @@ def parse_multi_remind_command_content(content: str) -> Dict[str, Any]:
     return {"reminder_id": command[1], "users_to_remind": users_to_remind}
 
 
+def parse_add_is_time_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a message object with reminder details,
+    construct a JSON/dict.
+    """
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+    current_time = datetime.fromtimestamp(message["timestamp"])
+    content = message["content"].split(" ")
+    time_period = content[3]
+    reminder_time_splitted = content[2].split(':')
+    reminder_splitted_hour = int(reminder_time_splitted[0])
+    reminder_hour = reminder_splitted_hour if time_period == 'am' else 12 + reminder_splitted_hour
+    try:
+        reminder_minutes = int(reminder_time_splitted[1])
+    except IndexError:
+        reminder_minutes = 0
+
+    total_time = (reminder_hour - current_time.hour) * 60 + (reminder_minutes - current_time.minute)
+
+    return {
+        "zulip_user_email": message["sender_email"],
+        "title": url,
+        "created": message["timestamp"],
+        "deadline": compute_deadline_timestamp(message["timestamp"], total_time, 'minutes'),
+        "active": True,
+    }
+
+
+def parse_add_date_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a message object with reminder details,
+    construct a JSON/dict.
+    """
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+    content = message["content"].split(" ")
+    reminder_datetime = f'{content[2]} {content[3]}'
+    deadline = datetime.strptime(reminder_datetime, '%Y-%m-%d %H:%M').timestamp()
+    return {
+        "zulip_user_email": message["sender_email"],
+        "title": url,
+        "created": message["timestamp"],
+        "deadline": deadline,
+        "active": True,
+    }
+    
+
 def generate_reminders_list(response: Dict[str, Any]) -> str:
     bot_response = ""
     reminders_list = response["reminders_list"]
@@ -199,62 +277,10 @@ def compute_deadline_timestamp(
     Given a submitted stamp and an interval,
     return deadline timestamp.
     """
-    import pdb; pdb.set_trace()
+   
     if time_unit in SINGULAR_UNITS:  # Convert singular units to plural
         time_unit = f"{time_unit}s"
 
     interval = timedelta(**{time_unit: int(time_value)})
     datetime_submitted = datetime.fromtimestamp(timestamp_submitted)
     return (datetime_submitted + interval).timestamp()
-
-
-def is_iso_time_command(message: str) -> bool:
-    try:
-        import pdb; pdb.set_trace()
-        result = re.match(r"at\s+\b([0-9]|1[0-2])\b(:(\b(0+[0-9]|[1-4][0-9]|5[0-9])\b))?\s+(am|pm)*", message["content"])
-        
-        if result is not None:
-            current_date = datetime.fromtimestamp(message["timestamp"])
-            hour = get_time_period_hour(result.group(1), result.group())
-            minutes = get_minutes(result.group(2))
-            reminder_date = current_date.replace(hour=hour, minute=minutes)
-            
-            return reminder_date > current_date
-        return False
-    except (AssertionError, IndexError, ValueError):
-        return False
-
-def parse_add_is_time_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Given a message object with reminder details,
-    construct a JSON/dict.
-    """
-    #import pdb; pdb.set_trace()
-    content = message["content"].split(" ")
-    reminder_time = content[1]
-    time_period = content[2]
-    reminder_title = content[3] if len(content) >= 4 is not None else 'Reminder'
-    current_hour = int((datetime.fromtimestamp(message["timestamp"])).hour)
-    current_minute = int((datetime.fromtimestamp(message["timestamp"])).minute)
-    reminder_hour = get_time_period_hour(reminder_time, time_period)
-    reminder_minutes = get_minutes(reminder_time)
-
-    total_time = (reminder_hour - current_hour) * 60 + (reminder_minutes - current_minute)
-
-    return {
-        "zulip_user_email": message["sender_email"],
-        "title": reminder_title,
-        "created": message["timestamp"],
-        "deadline": compute_deadline_timestamp(message["timestamp"], total_time, 'minutes'),
-        "active": True,
-    }
-
-def get_time_period_hour(string_hour, period):
-    if 'pm' in (period):
-        return 12 + int(string_hour.split(":")[0]) if ':' in string_hour else 12 + int(string_hour)
-    return int(string_hour)
-
-def get_minutes(string_time):
-    if string_time is not None and ':' in string_time:
-        return int(string_time.split(":")[1])
-    return 0
