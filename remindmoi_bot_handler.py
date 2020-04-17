@@ -30,7 +30,8 @@ from remindmoi_django.bot_server.bot_helpers import (
     is_iso_date_command,
     parse_add_date_command_content,
 )
-#from remindmoi_django.remindmoi_bot.zulip_utils import (convert_date_to_iso)
+
+# from remindmoi_django.remindmoi_bot.zulip_utils import (convert_date_to_iso)
 
 USAGE = """
 A bot that schedules reminders for users.
@@ -86,8 +87,12 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             response = response.json()
             assert response["success"]
             new_tzinfo = gettz()
-            deadline = datetime.utcfromtimestamp(reminder_object['deadline']).replace(tzinfo=new_tzinfo).isoformat()
-            message = f"Reminder stored. title: {reminder_object['title']}. Date:{deadline}  Your reminder id is: {response['reminder_id']}. " 
+            deadline = (
+                datetime.utcfromtimestamp(reminder_object["deadline"])
+                .replace(tzinfo=new_tzinfo)
+                .isoformat()
+            )
+            message = f"Reminder stored. title: {reminder_object['title']}. Date:{deadline}  Your reminder id is: {response['reminder_id']}. "
             return message
         if is_iso_time_command(message):
             reminder_object = parse_add_is_time_command_content(message)
@@ -132,12 +137,8 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             )
             response = response.json()
             assert response["success"]
-            emails = ', '.join(
-                [
-                    f"@**{email}**"
-                    for email
-                    in response["user_emails_to_remind"]
-                ]
+            emails = ", ".join(
+                [f"@**{email}**" for email in response["user_emails_to_remind"]]
             )
             return f"Reminder will be sent to {emails}. Your reminder id is: {response['reminder_id']}."
         return "Invalid input. Please check help."
