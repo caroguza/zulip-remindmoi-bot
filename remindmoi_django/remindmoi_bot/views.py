@@ -25,7 +25,7 @@ from remindmoi_bot.zulip_utils import (
 def add_reminder(request):
     # TODO: make it safer. Add CSRF validation. Sanitize/validate post data
     reminder_obj = json.loads(request.body)  # Create and save remninder object
-    zulip_emails = reminder_obj.get("zulip_user_emails")
+    zulip_emails = reminder_obj.get("zulip_user_email")
     if reminder_obj.get("is_multi"):
         zulip_usernames = reminder_obj.get("zulip_usernames")
         zulip_emails = get_user_emails(zulip_usernames) + [zulip_emails]
@@ -127,7 +127,6 @@ def list_reminders(request):
     new_tzinfo = gettz()
     # Return title and deadline (in unix timestamp) of reminders
     for reminder in user_reminders.values():
-        #import pdb; pdb.set_trace()
         response_reminders.append(
             {
                 "title": reminder["title"],

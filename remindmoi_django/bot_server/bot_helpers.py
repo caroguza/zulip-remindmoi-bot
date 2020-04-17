@@ -116,7 +116,7 @@ def has_multi(content: str) -> bool:
 
 def is_iso_time_command(message: str) -> bool:
     try:
-        result = re.match(r"me at\s+\b([0-9]|1[0-2])\b(:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)?\s+(am|pm)*", message["content"], flags=re.IGNORECASE)
+        result = re.match(r"me at\s+\b([0-9]|1[0-2])\b(:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)?\s+(am|pm)*(\s+--multi\s+(@\w+)+)?", message["content"], flags=re.IGNORECASE)
         
         if result is not None:
             current_time = datetime.fromtimestamp(message["timestamp"]).time()
@@ -160,7 +160,7 @@ def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     if is_multi:
         zulip_usernames = content[4].replace("*", "").replace("@", " ").strip().split(" ",)
     return {
-        "zulip_user_emails": message["sender_email"],
+        "zulip_user_email": message["sender_email"],
         "zulip_usernames": zulip_usernames,
         "title": url,
         "created": message["timestamp"],
@@ -222,8 +222,14 @@ def parse_add_is_time_command_content(message: Dict[str, Any]) -> Dict[str, Any]
     """
     url_params = get_url_params(message)
     url = create_conversation_url(**url_params)
-    current_time = datetime.fromtimestamp(message["timestamp"])
+
     content = message["content"].split(" ")
+    zulip_usernames = []
+    is_multi = has_multi(message["content"])
+    if is_multi:
+        zulip_usernames = content[5].replace("*", "").replace("@", " ").strip().split(" ",)
+
+    current_time = datetime.fromtimestamp(message["timestamp"])
     time_period = content[3]
     reminder_time_splitted = content[2].split(':')
     reminder_splitted_hour = int(reminder_time_splitted[0])
@@ -237,9 +243,11 @@ def parse_add_is_time_command_content(message: Dict[str, Any]) -> Dict[str, Any]
 
     return {
         "zulip_user_email": message["sender_email"],
+        "zulip_usernames": zulip_usernames,
         "title": url,
         "created": message["timestamp"],
         "deadline": compute_deadline_timestamp(message["timestamp"], total_time, 'minutes'),
+        "is_multi": is_multi,
         "active": True,
     }
 
@@ -251,14 +259,23 @@ def parse_add_date_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     """
     url_params = get_url_params(message)
     url = create_conversation_url(**url_params)
+    
     content = message["content"].split(" ")
+
+    zulip_usernames = []
+    is_multi = has_multi(message["content"])
+    if is_multi:
+        zulip_usernames = content[5].replace("*", "").replace("@", " ").strip().split(" ",)
+
     reminder_datetime = f'{content[2]} {content[3]}'
     deadline = datetime.strptime(reminder_datetime, '%Y-%m-%d %H:%M').timestamp()
     return {
         "zulip_user_email": message["sender_email"],
+        "zulip_usernames": zulip_usernames,
         "title": url,
         "created": message["timestamp"],
         "deadline": deadline,
+        "is_multi": is_multi,
         "active": True,
     }
     
