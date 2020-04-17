@@ -130,7 +130,7 @@ def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     if is_multi:
         zulip_usernames = content[4].replace("*", "").replace("@", " ").strip().split(" ",)
     return {
-        "zulip_user_emails": message["sender_email"],
+        "zulip_user_email": message["sender_email"],
         "zulip_usernames": zulip_usernames,
         "title": url,
         "created": message["timestamp"],
