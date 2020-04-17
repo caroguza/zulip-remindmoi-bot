@@ -81,7 +81,7 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
         return USAGE
 
     try:
-        if is_iso_date_command(message):
+        if is_iso_date_command(message_content, message["timestamp"]):
             reminder_object = parse_add_date_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
             response = response.json()
@@ -94,7 +94,7 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             )
             message = f"Reminder stored. title: {reminder_object['title']}. Date:{deadline}  Your reminder id is: {response['reminder_id']}. "
             return message
-        if is_iso_time_command(message):
+        if is_iso_time_command(message_content, message["timestamp"]):
             reminder_object = parse_add_is_time_command_content(message)
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
             response = response.json()

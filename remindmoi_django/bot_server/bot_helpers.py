@@ -115,19 +115,19 @@ def has_multi(content: str) -> bool:
     return "--multi" in content
 
 
-def is_iso_time_command(message: str) -> bool:
+def is_iso_time_command(content: str, timestamp: int) -> bool:
     try:
         result = re.match(
             r"me at\s+\b([0-9]|1[0-2])\b(:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)?\s+(am|pm)*(\s+--multi\s+(@\w+)+)?",
-            message["content"],
+            content,
             flags=re.IGNORECASE,
         )
 
         if result is not None:
-            current_time = datetime.fromtimestamp(message["timestamp"]).time()
+            current_time = datetime.fromtimestamp(timestamp).time()
             hour = int(result.group(1))
             period = result.group(4).lower()
-            reminder_hour = hour if "am" == period else 12 + hour
+            reminder_hour =  hour if period == "am" or (hour == 12 and period == "pm") else 12 + hour
             minutes = int(result.group(3)) if result.group(3) is not None else 0
             reminder_time = current_time.replace(hour=reminder_hour, minute=minutes)
 
@@ -137,16 +137,16 @@ def is_iso_time_command(message: str) -> bool:
         return False
 
 
-def is_iso_date_command(message: str) -> bool:
+def is_iso_date_command(content: str, timestamp: int) -> bool:
     try:
         result = re.match(
             r"me\s+at\s+\b(\b(20[2-8][0-9]|209[0-9]|2[1-9][0-9]{2}|[3-9][0-9]{3})\b-\b(0+[1-9]|1[0-2])\b-\b(0+[1-9]|[12][0-9]|3[01])\b)\b\s+\b(\b(0+[0-9]|1[0-9]|2[0-3])\b:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)(\s+--multi\s+(@\w+)+)?",
-            message["content"],
+            content,
         )
         if result is not None:
             remainder_datetime = f"{result.group(1)} {result.group(5)}"
             new_datetime = datetime.strptime(remainder_datetime, "%Y-%m-%d %H:%M")
-            current_datetime = datetime.fromtimestamp(message["timestamp"])
+            current_datetime = datetime.fromtimestamp(timestamp)
             return new_datetime > current_datetime
         return False
     except (AssertionError, IndexError, ValueError):
