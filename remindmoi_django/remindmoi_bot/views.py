@@ -25,8 +25,13 @@ from remindmoi_bot.zulip_utils import (
 def add_reminder(request):
     # TODO: make it safer. Add CSRF validation. Sanitize/validate post data
     reminder_obj = json.loads(request.body)  # Create and save remninder object
+    zulip_emails = reminder_obj.get("zulip_user_emails")
+    if reminder_obj.get("is_multi"):
+        zulip_usernames = reminder_obj.get("zulip_usernames")
+        zulip_emails = get_user_emails(zulip_usernames) + [zulip_emails]
+        zulip_emails = ",".join([email for email in zulip_emails])
     reminder = Reminder.objects.create(
-        zulip_user_email=reminder_obj["zulip_user_email"],
+        zulip_user_email=zulip_emails,
         title=reminder_obj["title"],
         created=datetime.utcfromtimestamp(reminder_obj["created"]).replace(
             tzinfo=pytz.utc
@@ -80,12 +85,22 @@ def multi_remind(request):
     """
     multi_remind_request = json.loads(request.body)
     reminder_id = multi_remind_request["reminder_id"]
-    users_list = multi_remind_request["users_to_remind"]
-    reminder = Reminder.objects.get(reminder_id=int(reminder_id))
-    user_emails_to_remind = get_user_emails(users_list) + [reminder.zulip_user_email]
+    usernames = multi_remind_request["users_to_remind"]
+    try:
+        reminder = Reminder.objects.get(reminder_id=int(reminder_id))
+    except Reminder.DoesNotExist:
+        return JsonResponse({"success": False, "reminder_id": reminder_id})
+    user_emails_to_remind = get_user_emails(usernames) + [reminder.zulip_user_email]
     reminder.zulip_user_email = ",".join(user_emails_to_remind)
     reminder.save()
-    return JsonResponse({"success": True})
+
+    return JsonResponse(
+        {
+            "success": True,
+            "reminder_id": reminder.reminder_id,
+            "user_emails_to_remind": usernames,
+        }
+    )
 
 
 @csrf_exempt

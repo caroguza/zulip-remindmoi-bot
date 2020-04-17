@@ -132,7 +132,14 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             )
             response = response.json()
             assert response["success"]
-            return f"Reminder will be sent to the specified recepients."  # Todo: add list of recepients
+            emails = ', '.join(
+                [
+                    f"@**{email}**"
+                    for email
+                    in response["user_emails_to_remind"]
+                ]
+            )
+            return f"Reminder will be sent to {emails}. Your reminder id is: {response['reminder_id']}."
         return "Invalid input. Please check help."
     except requests.exceptions.ConnectionError:
         return "Server not running, call Karim"

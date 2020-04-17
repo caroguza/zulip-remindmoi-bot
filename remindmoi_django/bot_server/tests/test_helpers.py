@@ -1,12 +1,16 @@
 import random
 import urllib.parse
-from copy import copy
 
 from django.test.testcases import TestCase
 from .test_utils import PRIVATE_MESSAGE, PUBLIC_MESSAGE
 
 from bot_server.constants import UNITS, SINGULAR_UNITS, BASE_TEMPLATE_URL
-from bot_server.bot_helpers import is_remindme_command, get_url_params, create_conversation_url
+from bot_server.bot_helpers import (
+    is_remindme_command,
+    get_url_params,
+    create_conversation_url,
+    is_multi_remind_command,
+)
 
 
 class HelperTestCase(TestCase):
@@ -27,6 +31,15 @@ class HelperTestCase(TestCase):
                 users.add(self.users[index])
             command = f"me {random.randint(0, 100)} {unit} --multi {''.join(users)}"
             self.assertTrue(is_remindme_command(command))
+
+    def test_is_multi_remind_command(self):
+        users_amount = random.randint(1, len(self.users))
+        users = set()
+        for index in range(users_amount):
+            users.add(self.users[index])
+        reminder_id = 10
+        command = f"multi {reminder_id} {''.join(users)}"
+        self.assertTrue(is_multi_remind_command(command))
 
     def test_get_url_params_private(self):
         expected_dict = {
