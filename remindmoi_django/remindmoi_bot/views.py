@@ -124,13 +124,12 @@ def list_reminders(request):
     user_reminders = Reminder.objects.filter(
         zulip_user_email__icontains=zulip_user_email
     )
-    new_tzinfo = gettz()
     # Return title and deadline (in unix timestamp) of reminders
     for reminder in user_reminders.values():
         response_reminders.append(
             {
                 "title": reminder["title"],
-                "deadline": reminder["deadline"].replace(tzinfo=new_tzinfo).isoformat(),
+                "deadline": convert_date_to_iso(reminder["deadline"]),
                 "reminder_id": reminder["reminder_id"],
             }
         )
@@ -147,7 +146,7 @@ def repeat_reminder(request):
     repeat_value = repeat_request["repeat_value"]
     reminder = Reminder.objects.get(reminder_id=reminder_id)
     job_id = str(reminder.reminder_id) + reminder.title
-    # import ipdb; ipdb.set_trace()
+ 
     scheduler.add_job(
         send_private_zulip_reminder,
         "interval",

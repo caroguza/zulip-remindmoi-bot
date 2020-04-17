@@ -31,8 +31,6 @@ from remindmoi_django.bot_server.bot_helpers import (
     parse_add_date_command_content,
 )
 
-# from remindmoi_django.remindmoi_bot.zulip_utils import (convert_date_to_iso)
-
 USAGE = """
 A bot that schedules reminders for users.
 
@@ -86,13 +84,7 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
             response = requests.post(url=ADD_ENDPOINT, json=reminder_object)
             response = response.json()
             assert response["success"]
-            new_tzinfo = gettz()
-            deadline = (
-                datetime.utcfromtimestamp(reminder_object["deadline"])
-                .replace(tzinfo=new_tzinfo)
-                .isoformat()
-            )
-            message = f"Reminder stored. title: {reminder_object['title']}. Date:{deadline}  Your reminder id is: {response['reminder_id']}. "
+            message = f"Reminder stored. title: {reminder_object['title']} Your reminder id is: {response['reminder_id']}. "
             return message
         if is_iso_time_command(message_content, message["timestamp"]):
             reminder_object = parse_add_is_time_command_content(message)
