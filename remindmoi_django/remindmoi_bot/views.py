@@ -16,6 +16,7 @@ from remindmoi_bot.zulip_utils import (
     send_private_zulip_reminder,
     repeat_unit_to_interval,
     get_user_emails,
+    convert_date_to_iso,
 )
 
 
@@ -128,7 +129,7 @@ def list_reminders(request):
         response_reminders.append(
             {
                 "title": reminder["title"],
-                "deadline": reminder["deadline"].timestamp(),
+                "deadline": convert_date_to_iso(reminder["deadline"]),
                 "reminder_id": reminder["reminder_id"],
             }
         )
@@ -145,7 +146,7 @@ def repeat_reminder(request):
     repeat_value = repeat_request["repeat_value"]
     reminder = Reminder.objects.get(reminder_id=reminder_id)
     job_id = str(reminder.reminder_id) + reminder.title
-    # import ipdb; ipdb.set_trace()
+
     scheduler.add_job(
         send_private_zulip_reminder,
         "interval",

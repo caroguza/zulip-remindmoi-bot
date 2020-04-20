@@ -25,7 +25,7 @@ def get_url_params(message):
         "stream_name": stream_name,
         "subject": message.get("subject"),
         "recipients": recipients,
-        "message_id": message.get("id")
+        "message_id": message.get("id"),
     }
 
 
@@ -115,6 +115,46 @@ def has_multi(content: str) -> bool:
     return "--multi" in content
 
 
+def is_iso_time_command(content: str, timestamp: int) -> bool:
+    try:
+        result = re.match(
+            r"me at\s+\b([0-9]|1[0-2])\b(:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)?\s+(am|pm)*(\s+--multi\s+(@\w+)+)?",
+            content,
+            flags=re.IGNORECASE,
+        )
+
+        if result is not None:
+            current_time = datetime.fromtimestamp(timestamp).time()
+            hour = int(result.group(1))
+            period = result.group(4).lower()
+            reminder_hour = (
+                hour if period == "am" or (hour == 12 and period == "pm") else 12 + hour
+            )
+            minutes = int(result.group(3)) if result.group(3) is not None else 0
+            reminder_time = current_time.replace(hour=reminder_hour, minute=minutes)
+
+            return reminder_time > current_time
+        return False
+    except (AssertionError, IndexError, ValueError):
+        return False
+
+
+def is_iso_date_command(content: str, timestamp: int) -> bool:
+    try:
+        result = re.match(
+            r"me\s+at\s+\b(\b(20[2-8][0-9]|209[0-9]|2[1-9][0-9]{2}|[3-9][0-9]{3})\b-\b(0+[1-9]|1[0-2])\b-\b(0+[1-9]|[12][0-9]|3[01])\b)\b\s+\b(\b(0+[0-9]|1[0-9]|2[0-3])\b:\b(0+[0-9]|[1-4][0-9]|5[0-9])\b)(\s+--multi\s+(@\w+)+)?",
+            content,
+        )
+        if result is not None:
+            remainder_datetime = f"{result.group(1)} {result.group(5)}"
+            new_datetime = datetime.strptime(remainder_datetime, "%Y-%m-%d %H:%M")
+            current_datetime = datetime.fromtimestamp(timestamp)
+            return new_datetime > current_datetime
+        return False
+    except (AssertionError, IndexError, ValueError):
+        return False
+
+
 def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     """
     Given a message object with reminder details,
@@ -122,13 +162,13 @@ def parse_remindme_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
     """
     url_params = get_url_params(message)
     url = create_conversation_url(**url_params)
-    content = message["content"].split(
-        " ", maxsplit=4
-    )
+    content = message["content"].split(" ", maxsplit=4)
     zulip_usernames = []
     is_multi = has_multi(message["content"])
     if is_multi:
-        zulip_usernames = content[4].replace("*", "").replace("@", " ").strip().split(" ",)
+        zulip_usernames = (
+            content[4].replace("*", "").replace("@", " ").strip().split(" ",)
+        )
     return {
         "zulip_user_email": message["sender_email"],
         "zulip_usernames": zulip_usernames,
@@ -185,6 +225,81 @@ def parse_multi_remind_command_content(content: str) -> Dict[str, Any]:
     return {"reminder_id": command[1], "users_to_remind": users_to_remind}
 
 
+def parse_add_is_time_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a message object with reminder details,
+    construct a JSON/dict.
+    """
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+
+    content = message["content"].split(" ")
+    zulip_usernames = []
+    is_multi = has_multi(message["content"])
+    if is_multi:
+        zulip_usernames = (
+            content[5].replace("*", "").replace("@", " ").strip().split(" ",)
+        )
+
+    current_time = datetime.fromtimestamp(message["timestamp"])
+    time_period = content[3]
+    reminder_time_splitted = content[2].split(":")
+    reminder_splitted_hour = int(reminder_time_splitted[0])
+    reminder_hour = (
+        reminder_splitted_hour if time_period == "am" else 12 + reminder_splitted_hour
+    )
+    try:
+        reminder_minutes = int(reminder_time_splitted[1])
+    except IndexError:
+        reminder_minutes = 0
+
+    total_time = (reminder_hour - current_time.hour) * 60 + (
+        reminder_minutes - current_time.minute
+    )
+
+    return {
+        "zulip_user_email": message["sender_email"],
+        "zulip_usernames": zulip_usernames,
+        "title": url,
+        "created": message["timestamp"],
+        "deadline": compute_deadline_timestamp(
+            message["timestamp"], total_time, "minutes"
+        ),
+        "is_multi": is_multi,
+        "active": True,
+    }
+
+
+def parse_add_date_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a message object with reminder details,
+    construct a JSON/dict.
+    """
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+
+    content = message["content"].split(" ")
+
+    zulip_usernames = []
+    is_multi = has_multi(message["content"])
+    if is_multi:
+        zulip_usernames = (
+            content[5].replace("*", "").replace("@", " ").strip().split(" ",)
+        )
+
+    reminder_datetime = f"{content[2]} {content[3]}"
+    deadline = datetime.strptime(reminder_datetime, "%Y-%m-%d %H:%M").timestamp()
+    return {
+        "zulip_user_email": message["sender_email"],
+        "zulip_usernames": zulip_usernames,
+        "title": url,
+        "created": message["timestamp"],
+        "deadline": deadline,
+        "is_multi": is_multi,
+        "active": True,
+    }
+
+
 def generate_reminders_list(response: Dict[str, Any]) -> str:
     bot_response = ""
     reminders_list = response["reminders_list"]
@@ -192,7 +307,7 @@ def generate_reminders_list(response: Dict[str, Any]) -> str:
         return "No reminders avaliable."
     for reminder in reminders_list:
         bot_response += f"""
-        \nReminder id {reminder['reminder_id']}, titled {reminder['title']}, is scheduled on {datetime.fromtimestamp(reminder['deadline']).strftime('%Y-%m-%d %H:%M')}
+        \nReminder id {reminder['reminder_id']}, titled {reminder['title']}, is scheduled on {reminder['deadline']}
         """
     return bot_response
 
@@ -204,6 +319,7 @@ def compute_deadline_timestamp(
     Given a submitted stamp and an interval,
     return deadline timestamp.
     """
+
     if time_unit in SINGULAR_UNITS:  # Convert singular units to plural
         time_unit = f"{time_unit}s"
 

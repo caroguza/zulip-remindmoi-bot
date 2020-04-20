@@ -2,6 +2,8 @@ import zulip
 
 from typing import Dict, List
 
+from dateutil.tz import gettz
+
 from remindmoi.settings import ZULIPRC
 from remindmoi_bot.models import Reminder
 
@@ -45,3 +47,8 @@ def get_user_emails(usernames: List[str]) -> List[str]:
         member["email"] for member in members if member["full_name"] in usernames
     ]
     return user_emails
+
+
+def convert_date_to_iso(timestamp):
+    new_tzinfo = gettz()
+    return timestamp.replace(tzinfo=new_tzinfo).isoformat()
