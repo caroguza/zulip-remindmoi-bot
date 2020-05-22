@@ -17,6 +17,8 @@ mypy = "*"
 ipdb = "*"
 python-dateutil = "*"
 black = "*"
+oauth2client = "*"
+caldav = "*"
 
 [requires]
 python_version = "3.7"

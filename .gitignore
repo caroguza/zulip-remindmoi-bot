@@ -64,3 +64,5 @@ botserverrc
 
 __pycache__/
 .python-version
+
+*/client_secret.json

@@ -5,13 +5,14 @@ from datetime import datetime
 from dateutil.tz import gettz
 
 from typing import Any, Dict
+
 from remindmoi_django.bot_server.constants import (
     ADD_ENDPOINT,
     REMOVE_ENDPOINT,
     LIST_ENDPOINT,
     REPEAT_ENDPOINT,
     MULTI_REMIND_ENDPOINT,
-)
+    CALENDAR_REMIND_ENDPOINT, AUTHORIZED_USER, REFRESH_TOKEN)
 from remindmoi_django.bot_server.bot_helpers import (
     is_add_command,
     is_remove_command,
@@ -29,7 +30,9 @@ from remindmoi_django.bot_server.bot_helpers import (
     parse_add_is_time_command_content,
     is_iso_date_command,
     parse_add_date_command_content,
-)
+    is_calendar_remind_command,
+    parse_calendar_remind_command_content)
+from remindmoi_django.bot_server.constants import ENDPOINT_URL
 
 USAGE = """
 A bot that schedules reminders for users.
@@ -57,6 +60,8 @@ repeat <reminder_id> every <int> <time_unit>
 Avaliable units: days, weeks, months
 
 """
+
+REDIRECT_LOGIN_URL = "cloud-login/"
 
 
 class RemindMoiHandler(object):
@@ -133,6 +138,32 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
                 [f"@**{email}**" for email in response["user_emails_to_remind"]]
             )
             return f"Reminder will be sent to {emails}. Your reminder id is: {response['reminder_id']}."
+        if is_calendar_remind_command(message_content):
+            user_email = message["sender_email"]
+            exists_response = requests.get(
+                url=AUTHORIZED_USER,
+                params={"email": user_email},
+            )
+            if exists_response.status_code == 404:
+                authorize_url = f"{ENDPOINT_URL}/{REDIRECT_LOGIN_URL}"
+                return f"please go to {authorize_url} to authorize the zulip bot to add a event in your calendar"
+
+            json_exists_response = exists_response.json()
+            if json_exists_response["user_expired"]:
+                requests.get(
+                    url=REFRESH_TOKEN,
+                    params={"email": user_email},
+                )
+            calendar_remind_request = parse_calendar_remind_command_content(message)
+            try:
+                response = requests.post(
+                    url=CALENDAR_REMIND_ENDPOINT,
+                    json=json.dumps(calendar_remind_request),
+                )
+            except Exception as e:
+                print(e)
+                return f"The event wasn't add to the calendar"
+            return f"Reminder will be scheduled to {calendar_remind_request['email']} at {calendar_remind_request['event_date']} {calendar_remind_request['event_time']}. "
         return "Invalid input. Please check help."
     except requests.exceptions.ConnectionError:
         return "Server not running, call Karim"

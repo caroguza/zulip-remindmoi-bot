@@ -1,16 +1,17 @@
+import os
 import json
+
+import caldav
 import pytz
+from datetime import datetime, timedelta
 
-from datetime import datetime
-
-from dateutil.tz import gettz
-from dateutil.parser import *
-
+import vobject
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from remindmoi_bot.models import Reminder
+from remindmoi_bot.auth import OAuth, set_oauth_credentials
+from remindmoi_bot.models import Reminder, OAuthUser, HistoryEvents
 from remindmoi_bot.scheduler import scheduler
 from remindmoi_bot.zulip_utils import (
     send_private_zulip_reminder,
@@ -18,6 +19,9 @@ from remindmoi_bot.zulip_utils import (
     get_user_emails,
     convert_date_to_iso,
 )
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ICLOUD_SECRETS = os.path.join(BASE_DIR, "client_secret.json")
 
 
 @csrf_exempt
@@ -155,3 +159,75 @@ def repeat_reminder(request):
         id=job_id
     )
     return JsonResponse({"success": True})
+
+
+@csrf_exempt
+@require_POST
+def create_calendar_event(request):
+    obj = json.loads(json.loads(request.body))
+
+    icloud_secrets = ICLOUD_SECRETS
+    with open(icloud_secrets) as secret_file:
+        data = json.load(secret_file)
+        secrets_dict = {key: value for key, value in data["web"].items()}
+
+    oaut_user_qs = OAuthUser.objects.filter(zulip_user_email=obj['email'])
+
+    if not oaut_user_qs.exists():
+        return JsonResponse({"failure": "the user doesn't exist"}, status=404)
+
+    oaut_user = oaut_user_qs.first()
+
+    credentials = set_oauth_credentials(
+        secrets_dict=secrets_dict,
+        access_token=oaut_user.access_token,
+        token_expiry=oaut_user.token_expiry,
+        refresh_token=oaut_user.refresh_token,
+    )
+
+    auth = OAuth(credentials)
+    caldav_client = caldav.DAVClient(
+        "https://cloud.monadical.com/remote.php/dav",
+        auth=auth)
+
+    principal = caldav_client.principal()
+    calendars = principal.calendars()
+    personal_calendar = None
+    for calendar in calendars:
+        if calendar.name == "Personal":
+            personal_calendar = calendar
+
+    assert personal_calendar is not None
+
+    # created the VCalendar
+    cal = vobject.iCalendar()
+    cal.add('prodid').value = "-//Example Corp.//CalDAV Client//EN"
+    cal.add('vevent')
+    first_ev = cal.vevent
+
+    # add body to first vevent
+    start = cal.vevent.add('dtstart')
+    str_datetime_start = f"{obj['event_date']} {obj['event_time']}"
+    datetime_start = datetime.strptime(str_datetime_start, "%d-%m-%Y %H:%M")
+    timezone = pytz.timezone("utc")
+    datetime_start = timezone.localize(datetime_start)
+    start.value = datetime_start
+    end = cal.vevent.add('dtend')
+    datetime_end = datetime_start + timedelta(minutes=30)
+    end.value = datetime_end
+    first_ev.add('summary').value = "reminder calendar"
+
+    history = HistoryEvents.objects.create(
+        zulip_user_email=obj['email'],
+        dt_start=datetime_start,
+    )
+
+    first_ev.add('uid').value = f"{history.id}-zulip-bot"
+
+    # fill the whole data required what are missing to create the event
+    icalstream = cal.serialize()
+
+    # add event to calendar
+    personal_calendar.add_event(icalstream)
+
+    return JsonResponse({"success": True}, status=200)
