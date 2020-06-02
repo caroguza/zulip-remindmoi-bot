@@ -106,7 +106,7 @@ class RedirectLoginView(RedirectView):
 
 
 class NextCloudLoginSuccess(TemplateView):
-    template_name = "templates/succeed_auth.html"
+    template_name = "succeed_auth.html"
 
     def get(self, request, *args, **kwargs):
 

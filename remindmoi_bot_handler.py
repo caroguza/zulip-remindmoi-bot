@@ -12,7 +12,11 @@ from remindmoi_django.bot_server.constants import (
     LIST_ENDPOINT,
     REPEAT_ENDPOINT,
     MULTI_REMIND_ENDPOINT,
-    CALENDAR_REMIND_ENDPOINT, AUTHORIZED_USER, REFRESH_TOKEN)
+    CALENDAR_REMIND_ENDPOINT,
+    AUTHORIZED_USER,
+    REFRESH_TOKEN,
+    REDIRECT_LOGIN_URL,
+)
 from remindmoi_django.bot_server.bot_helpers import (
     is_add_command,
     is_remove_command,
@@ -60,8 +64,6 @@ repeat <reminder_id> every <int> <time_unit>
 Avaliable units: days, weeks, months
 
 """
-
-REDIRECT_LOGIN_URL = "cloud-login/"
 
 
 class RemindMoiHandler(object):
@@ -145,8 +147,7 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
                 params={"email": user_email},
             )
             if exists_response.status_code == 404:
-                authorize_url = f"{ENDPOINT_URL}/{REDIRECT_LOGIN_URL}"
-                return f"please go to {authorize_url} to authorize the zulip bot to add a event in your calendar"
+                return f"please go to {REDIRECT_LOGIN_URL} to authorize the zulip bot to add a event in your calendar"
 
             json_exists_response = exists_response.json()
             if json_exists_response["user_expired"]:

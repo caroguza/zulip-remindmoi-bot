@@ -221,6 +221,10 @@ def parse_calendar_remind_command_content(message: Dict[str, Any]) -> Dict[str, 
     """
     --calendar 10-12-2020 01:00 --type google --email hapm.develop@gmail.com
     """
+
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+
     command = message["content"].split(" ", maxsplit=6)
     api_type = None
 
@@ -233,7 +237,8 @@ def parse_calendar_remind_command_content(message: Dict[str, Any]) -> Dict[str, 
         "event_date": command[1],
         "event_time": command[2],
         "api_type": api_type,
-        "email": email
+        "email": email,
+        "title": url,
     }
 
 

@@ -1,3 +1,5 @@
+{% load static%}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,13 +37,12 @@
 </head>
 <body>
     <div id="header">
-        <div class="logo">
-            <img src="">
+        <div class="logo" style="margin: 40px">
+            <img src="{% static 'img/logo.png' %}">
         </div>
     </div>
     <div class="text-center">
-        <h1 class="display-3 info">Monadical Cloud</h1>
-        <p class="lead info">You log in was succeed, please got to zulip and try to
+        <p class="lead info">You requirement was succeed, please got to zulip and try to
             schedule your reminds
         </p>
     </div>

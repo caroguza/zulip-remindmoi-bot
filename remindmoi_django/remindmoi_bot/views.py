@@ -215,7 +215,7 @@ def create_calendar_event(request):
     end = cal.vevent.add('dtend')
     datetime_end = datetime_start + timedelta(minutes=30)
     end.value = datetime_end
-    first_ev.add('summary').value = "reminder calendar"
+    first_ev.add('summary').value = obj["title"]
 
     history = HistoryEvents.objects.create(
         zulip_user_email=obj['email'],
