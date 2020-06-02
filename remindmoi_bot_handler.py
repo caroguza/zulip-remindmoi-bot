@@ -48,6 +48,9 @@ To store a reminder, mention or send a message to the bot in the following forma
 `add 1 day clean the dishes`
 `add 10 hours eat`
 
+To add a event to your calendar the format is:
+`--calendar 16-06-2020 18:00` (dd/mm/yyyy) (hour in utc time)
+
 Avaliable time units: minutes, hours, days, weeks
 
 To remove a reminder:
