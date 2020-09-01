@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 from remindmoi_bot.views import (
     add_reminder,
@@ -22,7 +22,7 @@ from remindmoi_bot.views import (
     list_reminders,
     repeat_reminder,
     multi_remind,
-)
+    create_calendar_event,)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -31,4 +31,6 @@ urlpatterns = [
     path("list_reminders", list_reminders),
     path("repeat_reminder", repeat_reminder),
     path("multi_remind", multi_remind),
+    path("create-calendar-event", create_calendar_event),
+    path("", include("remindmoi_bot.urls")),
 ]

@@ -1,0 +1,56 @@
+{% load static%}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+        body{
+            background-color: #31363b !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        body a{
+
+            color: #fff;
+            font-weight: 600;
+        }
+        body p.info {
+            color: #bdc3c7;
+        }
+        p.info {
+            margin: 20px auto;
+            text-shadow: 0 0 2px rgba(0, 0, 0, .4);
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            text-align: center;
+        }
+    </style>
+    <title>Monadical</title>
+
+</head>
+<body>
+    <div id="header">
+        <div class="logo" style="margin: 40px">
+            <img src="{% static 'img/logo.png' %}">
+        </div>
+    </div>
+    <div class="text-center">
+        <p class="lead info">You requirement was succeed, please got to zulip and try to
+            schedule your reminds
+        </p>
+    </div>
+
+    <footer role="contentinfo">
+        <p class="info">
+            <a href="https://cloud.monadical.com" target="_blank" class="entity-name">Monadical</a> –
+            Monadical Cloud </p>
+    </footer>
+</body>
+</html>

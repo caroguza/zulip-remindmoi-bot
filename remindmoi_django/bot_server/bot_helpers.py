@@ -115,6 +115,22 @@ def has_multi(content: str) -> bool:
     return "--multi" in content
 
 
+def is_calendar_remind_command(content: str) -> bool:
+    """
+    format to hour is 24 hours
+    --calendar 10-12-2020 01:00 (default: monadical cloud)
+    --calendar 10-12-2020 01:00 --type google --email hapm.develop@gmail.com
+    """
+    try:
+        result = re.match(
+            r"--calendar\s(((0?([1-9]|1[0-9]|2[0-9]|3[0-1]))-(0?([1-9]|1[0-2]))-([1-2][0-9][0-9][0-9]))\s((0?([0-9]|1[0-9]|2[0-3])):(([0-5]?[0-9])))(\s(--type\s\w*\s--email\s(\w+[/.-]*?\w)*@\w*.\w*)?)?)",
+            content,
+        )
+        return result is not None
+    except (AssertionError, IndexError, ValueError):
+        return False
+
+
 def is_iso_time_command(content: str, timestamp: int) -> bool:
     try:
         result = re.match(
@@ -198,6 +214,31 @@ def parse_add_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
             message["timestamp"], content[1], content[2]
         ),
         "active": True,
+    }
+
+
+def parse_calendar_remind_command_content(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    --calendar 10-12-2020 01:00 --type google --email hapm.develop@gmail.com
+    """
+
+    url_params = get_url_params(message)
+    url = create_conversation_url(**url_params)
+
+    command = message["content"].split(" ", maxsplit=6)
+    api_type = None
+
+    email = message.get("sender_email", None)
+
+    if len(command) == 7:
+        api_type = command[4]
+        email = command[6]
+    return {
+        "event_date": command[1],
+        "event_time": command[2],
+        "api_type": api_type,
+        "email": email,
+        "title": url,
     }
 
 

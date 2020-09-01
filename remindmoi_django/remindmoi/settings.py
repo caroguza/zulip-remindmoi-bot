@@ -14,12 +14,16 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.abspath(os.path.join(REPO_DIR, "data"))
 
 
 # zuliprc file
 ZULIPRC = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../etc/", "zuliprc")
 )
+# secrets file to connect with NextCloud server
+ICLOUD_SECRETS = os.path.join(BASE_DIR, "client_secret.json")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -58,10 +62,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "remindmoi.urls"
 
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [TEMPLATES_DIR],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -119,3 +125,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(DATA_DIR, "static")
+STATICFILES_DIR = os.path.join(BASE_DIR, "static")
+STATICFILES_DIRS = [
+    STATICFILES_DIR,
+]
