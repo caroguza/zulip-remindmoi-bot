@@ -151,7 +151,7 @@ class NextCloudLoginSuccess(View):
 
 
 class NextCloudRefreshToken(View):
-    template_name = "templates/succeed_auth.html"
+    template_name = "succeed_auth.html"
 
     def get(self, request, *args, **kwargs):
         user_email = request.GET.get("email", None)
