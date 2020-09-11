@@ -174,7 +174,7 @@ def create_calendar_event(request):
     oaut_user_qs = OAuthUser.objects.filter(zulip_user_email=obj['email'])
 
     if not oaut_user_qs.exists():
-        return JsonResponse({"failure": "the user doesn't exist"}, status=404)
+        return JsonResponse({"message": "the user doesn't exist"}, status=404)
 
     oaut_user = oaut_user_qs.first()
 
