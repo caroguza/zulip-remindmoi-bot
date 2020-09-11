@@ -150,22 +150,25 @@ def get_bot_response(message: Dict[str, Any], bot_handler: Any) -> str:
                 params={"email": user_email},
             )
             if exists_response.status_code == 404:
-                return f"please go to {REDIRECT_LOGIN_URL} to authorize the zulip bot to add a event in your calendar"
+                return f"Please go to {REDIRECT_LOGIN_URL} to authorize the Zulip bot to add a event in your calendar"
 
             json_exists_response = exists_response.json()
             if json_exists_response["user_expired"]:
-                requests.get(
+                refresh_response = requests.get(
                     url=REFRESH_TOKEN,
                     params={"email": user_email},
                 )
+                if refresh_response.status_code == 500:
+                    print(refresh_response['message'])
+                    return f"Refresh your session was not possible please go to {REDIRECT_LOGIN_URL} to authorize the Zulip bot to add a event in your calendar"
+
             calendar_remind_request = parse_calendar_remind_command_content(message)
-            try:
-                response = requests.post(
-                    url=CALENDAR_REMIND_ENDPOINT,
-                    json=json.dumps(calendar_remind_request),
-                )
-            except Exception as e:
-                print(e)
+            calendar_response = requests.post(
+                url=CALENDAR_REMIND_ENDPOINT,
+                json=json.dumps(calendar_remind_request),
+            )
+            if calendar_response.status_code != 200:
+                print(calendar_response['message'])
                 return f"The event wasn't add to the calendar"
             return f"Reminder will be scheduled to {calendar_remind_request['email']} at {calendar_remind_request['event_date']} {calendar_remind_request['event_time']}. "
         return "Invalid input. Please check help."

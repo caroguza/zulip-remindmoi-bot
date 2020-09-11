@@ -6,11 +6,11 @@ import pytz
 import requests
 from django.http import JsonResponse
 
-from django.shortcuts import redirect
+from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
-from django.views.generic import RedirectView, TemplateView
+from django.views.generic import RedirectView
 from django.conf import settings
 from oauth2client.client import OAuth2Credentials
 from requests.auth import AuthBase
@@ -105,11 +105,12 @@ class RedirectLoginView(RedirectView):
         return login_url()
 
 
-class NextCloudLoginSuccess(TemplateView):
+class NextCloudLoginSuccess(View):
     template_name = "succeed_auth.html"
 
     def get(self, request, *args, **kwargs):
 
+        context = {}
         auth_code = request.GET.get("code")
         if not auth_code:
             raise ValueError(
@@ -146,21 +147,30 @@ class NextCloudLoginSuccess(TemplateView):
             }
         )
 
-        return super().get(request, *args, **kwargs)
+        return render(request, self.template_name, context)
 
 
-class NextCloudRefreshToken(TemplateView):
+class NextCloudRefreshToken(View):
     template_name = "templates/succeed_auth.html"
 
     def get(self, request, *args, **kwargs):
         user_email = request.GET.get("email", None)
         assert user_email is not None
         oauth_obj = OAuthUser.objects.filter(zulip_user_email=user_email)
+        context = {}
 
         if not oauth_obj.exists():
-            redirect("cloud_login")
+            return JsonResponse({
+                "message": 'Oauth Object does not exist yet',
+            }, status=500)
 
         oauth_obj = oauth_obj.first()
+
+        if not oauth_obj.refresh_token:
+            return JsonResponse({
+                "message": 'Refresh token is not in the Oauth Object',
+
+            }, status=500)
 
         response = auth_token_request(
             grant_type='refresh_token',
@@ -168,21 +178,25 @@ class NextCloudRefreshToken(TemplateView):
         )
 
         if "access_token" not in response:
-            raise ValueError("Nextcloud didn't return an access token")
+            return JsonResponse({
+                "message": 'Access token is not in the response',
+
+            }, status=500)
 
         refresh_token = response.get('refresh_token', None)
+        oauth_obj.refresh_token = refresh_token
+        oauth_obj.save()
 
         token_expiry = None
         if 'expires_in' in response:
             delta = datetime.timedelta(seconds=int(response['expires_in']))
             token_expiry = delta + datetime.datetime.utcnow()
 
-        oauth_obj.refresh_token = refresh_token,
-        oauth_obj.token_expiry = response["token_expiry"],
-        oauth_obj.access_token = token_expiry,
+        oauth_obj.token_expiry = token_expiry
+        oauth_obj.access_token = response["access_token"]
         oauth_obj.save()
 
-        return super().get(request, *args, **kwargs)
+        return render(request, self.template_name, context)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
